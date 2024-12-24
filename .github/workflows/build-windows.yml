@@ -1,0 +1,72 @@
+# reference: https://github.com/zhuzichu520/FluentUI/blob/main/.github/workflows/windows.yml
+
+name: Build the project on windows and release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    name: Build and release
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        os: [windows-latest]
+        include:
+          - qt_ver: 6.8.1        
+            qt_arch: win64_msvc2022_64
+            msvc_arch: x64
+            qt_arch_install: msvc2022_64  
+
+    env:
+      targetName: Qt6Bluetooth.dll
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          
+      - name: Setup ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+        with:
+          version: 1.10.2
+          
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ matrix.qt_ver }}
+          arch: ${{ matrix.qt_arch }}
+          cache: 'true'
+          cache-key-prefix: 'install-qt-action'
+          
+      - name: Build qtconnectivity/bluetooth
+        id: build
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.msvc_arch }}
+          ninja --version
+          mkdir build
+          cd build
+          cmake -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_BUILD_TYPE=Release -GNinja ..
+          cmake --build . --target Bluetooth --config Release --parallel
+          cmake --build . --target Copy-Qt6Bluetooth.dll-to-dist
+           
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.targetName }}
+          path: dist
+
+      - name: Upload release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/${{ env.targetName }}
+          asset_name: ${{ env.targetName }}
+          tag: ${{ github.ref }}
+          overwrite: true
