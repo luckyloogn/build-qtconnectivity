@@ -1,4 +1,4 @@
 [submodule "qtconnectivity"]
 	path = qtconnectivity
-	url = https://github.com/lucky9loogn/qtconnectivity.git
+	url = https://github.com/luckyloogn/qtconnectivity.git
 	branch = fix-v6.8.1
